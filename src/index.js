@@ -20,15 +20,15 @@ const swaggerOptions = {
       },
     },
     servers: [
-        {
-          url: 'https://tu-servicio.azurewebsites.net',
-          description: 'Servidor de producción'
-        },
-        {
-          url: 'http://localhost:3000',
-          description: 'Servidor de desarrollo'
-        }
-      ],
+      {
+        url: 'https://tu-servicio.azurewebsites.net',
+        description: 'Servidor de producción'
+      },
+      {
+        url: 'http://localhost:3000',
+        description: 'Servidor de desarrollo'
+      }
+    ],
     components: {
       securitySchemes: {
         bearerAuth: {
@@ -53,10 +53,10 @@ async function main() {
   const app = express();
   app.use(express.json());
   app.use(cors());
-  
+
   // Middleware de Swagger
   app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpecs));
-  
+
   /**
    * @swagger
    * components:
@@ -240,7 +240,7 @@ async function main() {
     try {
       const { id } = req.params;
       const { Nombre, Correo, Contrasena } = req.body;
-       
+
       // Verificar si el usuario existe
       const checkUser = await sql.query`SELECT * FROM UsuariosVidal WHERE IdUsuario = ${id}`;
       if (checkUser.recordset.length === 0) {
@@ -249,16 +249,16 @@ async function main() {
 
       // Construir la consulta dinámicamente
       let updateFields = [];
-      
+
       if (Nombre) {
-        updateFields.push(`Nombre = '${Nombre.replace(/'/g, "''")}'`);
+        updateFields.push(`Nombre = '${Nombre.replace(/'/g, '\'\'')}'`);
       }
       if (Correo) {
-        updateFields.push(`Correo = '${Correo.replace(/'/g, "''")}'`);
+        updateFields.push(`Correo = '${Correo.replace(/'/g, '\'\'')}'`);
       }
       if (Contrasena) {
         const hash = await bcrypt.hash(Contrasena, 10);
-        updateFields.push(`ContrasenaHash = '${hash.replace(/'/g, "''")}'`);
+        updateFields.push(`ContrasenaHash = '${hash.replace(/'/g, '\'\'')}'`);
       }
 
       if (updateFields.length === 0) {
@@ -369,7 +369,7 @@ async function main() {
       const request = new sql.Request();
       request.input('Correo', sql.NVarChar, Correo);
       const result = await request.execute('LoginUsuario');
-      
+
       // Opción 2: Consulta directa (descomenta si no tienes el stored procedure)
       // const result = await sql.query`SELECT IdUsuario, Nombre, Correo, ContrasenaHash FROM UsuariosVidal WHERE Correo = ${Correo}`;
 
@@ -378,7 +378,7 @@ async function main() {
       }
 
       const usuario = result.recordset[0];
-      
+
       // Verificar contraseña con bcrypt
       const match = await bcrypt.compare(Contrasena, usuario.ContrasenaHash);
       if (!match) {
@@ -387,7 +387,7 @@ async function main() {
 
       // Generar token JWT
       const token = jwt.sign(
-        { 
+        {
           id: usuario.IdUsuario,
           nombre: usuario.Nombre,
           correo: usuario.Correo
@@ -410,20 +410,21 @@ async function main() {
       res.status(500).json({ error: err.message });
     }
   });
-  
+
   // Middleware para proteger rutas
   const verificarToken = (req, res, next) => {
     const token = req.headers['authorization']?.split(' ')[1];
-    
+
     if (!token) {
       return res.status(403).json({ error: 'Token no proporcionado' });
     }
-    
+
     try {
       const decoded = jwt.verify(token, process.env.JWT_SECRET || 'clave_secreta_por_defecto');
       req.usuario = decoded;
       next();
-    } catch (error) {
+    } catch (err) {
+      console.error('Error al verificar token:', err);
       return res.status(401).json({ error: 'Token inválido' });
     }
   };
